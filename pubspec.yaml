@@ -1,0 +1,61 @@
+name: church_app
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI + Utilities
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.1
+  in_app_review: ^2.0.6
+  image_picker: ^1.1.0
+  intl: ^0.18.1
+  file_picker: ^6.1.1
+  open_filex: ^4.3.2
+  crypto: ^3.0.3
+
+  # PDF & Printing
+  pdf: ^3.10.4
+  printing: ^5.11.0
+
+  # 🔥 Firebase
+  firebase_core: ^2.25.4
+  firebase_auth: ^4.17.8
+  cloud_firestore: ^4.15.8
+  firebase_storage: ^11.6.8
+  firebase_app_check: ^0.2.1+7
+
+   # Firebase Cloud Functions (add this)
+  cloud_functions: ^4.1.0  # <-- add this line
+  http: ^1.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/app_icon.png
+    - assets/splash.png
+    - assets/tigo.png
+    - assets/airtel.png
+    - assets/mpesa.png
+    - assets/crdb.png
+    - assets/nmb.png
+
