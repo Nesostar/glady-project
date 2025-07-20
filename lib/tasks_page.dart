@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path/path.dart' as p;
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -24,16 +27,46 @@ class _TasksPageState extends State<TasksPage> {
     'More',
   ];
 
-  void _addItem() {
+  Future<void> _addItem() async {
     final content = _controller.text.trim();
     if (content.isEmpty && _pickedFile == null) return;
 
+    String? fileUrl;
+
+    if (_pickedFile != null) {
+      final fileName = p.basename(_pickedFile!.path);
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('uploads/$_selectedType/$fileName');
+      await ref.putFile(_pickedFile!);
+      fileUrl = await ref.getDownloadURL();
+    }
+
+    // Save to selected Firestore collection
+    await FirebaseFirestore.instance.collection(_selectedType).add({
+      'type': _selectedType,
+      'content': content,
+      'fileUrl': fileUrl,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // 🔔 Save notification to 'notifications' collection
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': 'New $_selectedType',
+      'message': content.isNotEmpty ? content : 'A new $_selectedType has been uploaded',
+      'timestamp': FieldValue.serverTimestamp(),
+      'seen': false,
+    });
+
     setState(() {
-      _items.add(
-          {'type': _selectedType, 'content': content, 'file': _pickedFile});
+      _items.add({'type': _selectedType, 'content': content, 'file': _pickedFile});
       _controller.clear();
       _pickedFile = null;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$_selectedType added successfully')),
+    );
   }
 
   Future<void> _pickFile() async {
@@ -86,7 +119,6 @@ class _TasksPageState extends State<TasksPage> {
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            // Type selector
             DropdownButtonFormField<String>(
               value: _selectedType,
               decoration: const InputDecoration(labelText: "Select Task Type"),
@@ -97,7 +129,6 @@ class _TasksPageState extends State<TasksPage> {
             ),
             const SizedBox(height: 10),
 
-            // Text input
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
@@ -107,7 +138,6 @@ class _TasksPageState extends State<TasksPage> {
               maxLines: null,
             ),
 
-            // Upload button
             Row(
               children: [
                 ElevatedButton.icon(
@@ -131,7 +161,6 @@ class _TasksPageState extends State<TasksPage> {
 
             const Divider(height: 30),
 
-            // Display saved items
             Expanded(
               child: _items.isEmpty
                   ? const Center(child: Text("No tasks added."))
@@ -150,15 +179,12 @@ class _TasksPageState extends State<TasksPage> {
                             isThreeLine: true,
                             onTap: item['file'] != null
                                 ? () async {
-                                    final result =
-                                        await OpenFilex.open(item['file'].path);
+                                    final result = await OpenFilex.open(item['file'].path);
                                     if (result.type != ResultType.done) {
-                                      // ignore: use_build_context_synchronously
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                            content: Text(
-                                                "Failed to open file: ${result.message}")),
+                                          content: Text("Failed to open file: ${result.message}"),
+                                        ),
                                       );
                                     }
                                   }

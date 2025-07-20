@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Add this import for logout
 
 class DashboardPage extends StatelessWidget {
   DashboardPage({super.key});
@@ -21,6 +22,17 @@ class DashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Dashboard"),
         backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              // After logout, navigate to login page (adjust route name as per your app)
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

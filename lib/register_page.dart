@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -30,6 +31,15 @@ class _RegisterPageState extends State<RegisterPage> {
   bool obscureConfirmPassword = true;
   bool isLoading = false;
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   void _register() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
@@ -50,7 +60,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
+        const SnackBar(content: Text("Passwords do not match.")),
       );
       return;
     }
@@ -58,13 +68,11 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => isLoading = true);
 
     try {
-      // Register user
       final userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
       final uid = userCredential.user!.uid;
 
-      // Save additional data in Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'name': name,
@@ -74,11 +82,18 @@ class _RegisterPageState extends State<RegisterPage> {
         'createdAt': Timestamp.now(),
       });
 
-      // You can navigate to your home page here
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Registration successful")),
       );
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       String message = "Registration failed.";
       if (e.code == 'email-already-in-use') {
@@ -88,15 +103,18 @@ class _RegisterPageState extends State<RegisterPage> {
       } else if (e.code == 'invalid-email') {
         message = "Email is invalid.";
       }
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (e) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("An unexpected error occurred.")),
       );
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -145,9 +163,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     .map((church) => DropdownMenuItem(value: church, child: Text(church)))
                     .toList(),
                 onChanged: (value) {
-                  setState(() {
-                    selectedChurch = value;
-                  });
+                  setState(() => selectedChurch = value);
                 },
                 decoration: const InputDecoration(
                   labelText: "Select Church",
@@ -163,9 +179,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                     .toList(),
                 onChanged: (value) {
-                  setState(() {
-                    membershipType = value;
-                  });
+                  setState(() => membershipType = value);
                 },
                 decoration: const InputDecoration(
                   labelText: "Membership Type",
@@ -186,9 +200,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       obscurePassword ? Icons.visibility : Icons.visibility_off,
                     ),
                     onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
+                      setState(() => obscurePassword = !obscurePassword);
                     },
                   ),
                   border: const OutlineInputBorder(),
@@ -207,9 +219,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
                     ),
                     onPressed: () {
-                      setState(() {
-                        obscureConfirmPassword = !obscureConfirmPassword;
-                      });
+                      setState(() => obscureConfirmPassword = !obscureConfirmPassword);
                     },
                   ),
                   border: const OutlineInputBorder(),

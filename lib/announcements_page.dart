@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 
 class AnnouncementsPage extends StatelessWidget {
   const AnnouncementsPage({super.key});
@@ -7,8 +9,43 @@ class AnnouncementsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Announcements')),
-      body: const Center(
-        child: Text('Announcements Page', style: TextStyle(fontSize: 18)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Announcement')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) return const Center(child: Text('No announcements available'));
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final content = data['content'] ?? '[No content]';
+              final fileUrl = data['fileUrl'];
+
+              return Card(
+                child: ListTile(
+                  title: Text(content),
+                  subtitle: const Text('Announcement'),
+                  onTap: fileUrl != null
+                      ? () async {
+                          final result = await OpenFilex.open(fileUrl);
+                          if (result.type != ResultType.done) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Failed to open file: ${result.message}")),
+                            );
+                          }
+                        }
+                      : null,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
