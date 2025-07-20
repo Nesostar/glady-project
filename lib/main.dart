@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart'; // Add this import
+import 'package:firebase_app_check/firebase_app_check.dart';
+
 import 'splash_screen.dart';
 import 'login_page.dart';
 import 'register_page.dart';
@@ -11,12 +12,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // ✅ First initialize Firebase
+    // Initialize Firebase
     await Firebase.initializeApp();
 
-    // ✅ Then activate Firebase App Check
+    // Activate Firebase App Check (optional)
     await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug, // for testing
+      androidProvider: AndroidProvider.debug,
     );
 
     runApp(const MyApp());
@@ -28,8 +29,6 @@ void main() async {
     ));
   }
 }
-
-
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

@@ -31,9 +31,9 @@ dependencies:
   cloud_firestore: ^4.15.8
   firebase_storage: ^11.6.8
   firebase_app_check: ^0.2.1+7
+  cloud_functions: ^4.1.0
 
-   # Firebase Cloud Functions (add this)
-  cloud_functions: ^4.1.0  # <-- add this line
+  # Networking
   http: ^1.4.0
 
 dev_dependencies:
@@ -58,4 +58,3 @@ flutter:
     - assets/mpesa.png
     - assets/crdb.png
     - assets/nmb.png
-

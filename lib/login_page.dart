@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'home_page.dart';
 import 'admin_page.dart';
 import 'forgot_password_page.dart';
@@ -19,6 +18,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
   String? error;
+  bool obscurePassword = true;
 
   Future<void> login() async {
     setState(() {
@@ -119,14 +119,25 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
-                ),
-              ),
+  controller: passwordController,
+  obscureText: obscurePassword,
+  decoration: InputDecoration(
+    labelText: 'Password',
+    prefixIcon: const Icon(Icons.lock),
+    suffixIcon: IconButton(
+      icon: Icon(
+        obscurePassword ? Icons.visibility_off : Icons.visibility,
+      ),
+      onPressed: () {
+        setState(() {
+          obscurePassword = !obscurePassword;
+        });
+      },
+    ),
+    border: const OutlineInputBorder(),
+  ),
+),
+
               const SizedBox(height: 10),
               if (error != null)
                 Text(error!, style: const TextStyle(color: Colors.red)),

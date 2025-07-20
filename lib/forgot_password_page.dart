@@ -14,27 +14,55 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   String? message;
 
   Future<void> sendResetEmail() async {
+    final email = emailController.text.trim();
+
+    // Basic email validation
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        message = 'Please enter a valid email address.';
+      });
+      return;
+    }
+
     setState(() {
       isSending = true;
       message = null;
     });
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: emailController.text.trim(),
-      );
+      print('Attempting to send password reset email to $email');
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       setState(() {
-        message = '✅ Password reset email sent.';
+        message = '✅ Password reset email sent to $email.';
       });
+      print('Password reset email sent successfully.');
     } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException code: ${e.code}, message: ${e.message}');
+      String errorMsg = 'An error occurred. Please try again.';
+      if (e.code == 'user-not-found') {
+        errorMsg = 'No user found with this email.';
+      } else if (e.message != null) {
+        errorMsg = e.message!;
+      }
       setState(() {
-        message = e.message;
+        message = errorMsg;
+      });
+    } catch (e) {
+      print('General exception: $e');
+      setState(() {
+        message = 'An unexpected error occurred.';
       });
     } finally {
       setState(() {
         isSending = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
   }
 
   @override
@@ -56,6 +84,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             const SizedBox(height: 20),
             TextField(
               controller: emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email),
@@ -72,14 +101,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: isSending
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                      )
                     : const Text("Send Reset Link"),
               ),
             ),
             if (message != null) ...[
               const SizedBox(height: 16),
-              Text(message!, style: TextStyle(color: message!.startsWith('✅') ? Colors.green : Colors.red)),
-            ]
+              Text(
+                message!,
+                style: TextStyle(
+                  color: message!.startsWith('✅') ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -13,6 +13,7 @@ import 'settings_page.dart';
 import 'faq_page.dart';
 import 'transaction_history_page.dart';
 import 'rate_app_helper.dart';
+import 'notifications_page.dart'; // ✅ Ensure this exists and is imported
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -85,8 +86,7 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),
-              onTap: () {
-              },
+              onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.help_outline),
@@ -118,7 +118,6 @@ class _HomePageState extends State<HomePage> {
                   const SnackBar(content: Text('Logged out successfully')),
                 );
                 Future.delayed(const Duration(milliseconds: 500), () {
-                  // ignore: use_build_context_synchronously
                   Navigator.pushReplacementNamed(context, '/login');
                 });
               },
@@ -130,10 +129,58 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
+       actions: [
+  StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+        .where('isRead', isEqualTo: false)
+        .snapshots(),
+    builder: (context, snapshot) {
+      final int unreadCount = snapshot.data?.docs.length ?? 0;
+
+      return Stack(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              );
+            },
+          ),
+          if (unreadCount > 0)
+            Positioned(
+              right: 12,
+              top: 12,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Text(
+                  '$unreadCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
         ],
-      ),
+      );
+    },
+  ),
+],
+),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -199,8 +246,10 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(item['icon'], size: 40, color: item['color']),
                               const SizedBox(height: 12),
-                              Text(item['title'],
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: item['color'])),
+                              Text(
+                                item['title'],
+                                style: TextStyle(fontWeight: FontWeight.bold, color: item['color']),
+                              ),
                             ],
                           ),
                         ),
