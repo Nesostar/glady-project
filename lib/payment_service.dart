@@ -24,6 +24,7 @@ class PaymentService {
       print('🚀 Making POST request to: ${ApiConfig.zenoPayBaseUrl}');
       print('📦 Request body: ${jsonEncode(requestBody)}');
       print('📋 Headers: ${ApiConfig.headers}');
+      print('📱 Phone number being sent: $buyerPhone');
 
       final response = await http.post(
         Uri.parse(ApiConfig.zenoPayBaseUrl),
@@ -69,7 +70,7 @@ class PaymentService {
 
   // Validate phone number for Tanzania mobile money
   static bool isValidTanzanianPhone(String phone) {
-    // Remove any spaces or special characters
+    // Remove any spaces, dashes, and special characters except +
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
 
     // Check for valid Tanzanian mobile patterns
@@ -85,17 +86,43 @@ class PaymentService {
 
   // Format phone number to required format
   static String formatPhoneNumber(String phone) {
+    // Remove any spaces, dashes, and special characters except +
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
 
+    // Convert to 255XXXXXXXXX format (what most APIs expect)
     if (cleanPhone.startsWith('+255')) {
-      return cleanPhone.substring(4); // Remove +255, keep the rest
+      return cleanPhone.substring(1); // Remove +, keep 255XXXXXXXXX
     } else if (cleanPhone.startsWith('255')) {
-      return cleanPhone.substring(3); // Remove 255, keep the rest
-    } else if (cleanPhone.startsWith('00')) {
-      return cleanPhone.substring(1); // Remove leading 0
+      return cleanPhone; // Already in correct format: 255XXXXXXXXX
+    } else if (cleanPhone.startsWith('0')) {
+      return '255${cleanPhone.substring(1)}'; // Convert 0XXXXXXXXX to 255XXXXXXXXX
+    }
+
+    // If it's already in the right format (no prefix), assume it needs 255
+    if (cleanPhone.length == 9 && cleanPhone.startsWith(RegExp(r'[67]'))) {
+      return '255$cleanPhone';
     }
 
     return cleanPhone;
+  }
+
+  // Test different phone number formats
+  static void testPhoneFormats() {
+    final testNumbers = [
+      '0712345678',
+      '+255712345678',
+      '255712345678',
+      '712345678',
+      '0675177678',
+      '+255675177678',
+    ];
+
+    print('📱 Testing phone number formats:');
+    for (final number in testNumbers) {
+      final formatted = formatPhoneNumber(number);
+      final isValid = isValidTanzanianPhone(number);
+      print('Input: $number → Formatted: $formatted → Valid: $isValid');
+    }
   }
 
   // Test payment method to verify POST requests are working

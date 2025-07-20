@@ -44,15 +44,20 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
 
     try {
       // Validate phone number format
-      if (!PaymentService.isValidTanzanianPhone(_phoneController.text)) {
+      final phoneInput = _phoneController.text.trim();
+
+      // Since the form shows +255 prefix, user only enters the 9 digits
+      // We need to construct the full number for validation
+      final fullPhoneNumber = '+255$phoneInput';
+
+      if (!PaymentService.isValidTanzanianPhone(fullPhoneNumber)) {
         setState(() => _error =
-            'Please enter a valid Tanzanian phone number (e.g., 0712345678)');
+            'Please enter a valid 9-digit phone number (e.g., 712345678)');
         return;
       }
 
-      // Format phone number
-      final formattedPhone =
-          PaymentService.formatPhoneNumber(_phoneController.text);
+      // Format phone number (this will convert +255712345678 to 255712345678)
+      final formattedPhone = PaymentService.formatPhoneNumber(fullPhoneNumber);
 
       // Use the new ZenoPay API method
       final result = await PaymentService.processMobileMoneyPayment(
@@ -210,7 +215,7 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                             textInputAction: TextInputAction.done,
                             decoration: InputDecoration(
                               labelText: 'Phone Number',
-                              hintText: '0712345678',
+                              hintText: '712345678',
                               prefixText: '+255 ',
                               prefixIcon: const Icon(Icons.phone_android),
                               border: OutlineInputBorder(
@@ -223,8 +228,11 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter your phone number';
                               }
-                              if (!RegExp(r'^[0-9]{9}$').hasMatch(value)) {
-                                return 'Enter 9 digits (without +255)';
+                              // Remove any spaces and validate 9 digits starting with 6 or 7
+                              final cleanValue = value.replaceAll(' ', '');
+                              if (!RegExp(r'^[67]\d{8}$')
+                                  .hasMatch(cleanValue)) {
+                                return 'Enter 9 digits starting with 6 or 7 (e.g., 712345678)';
                               }
                               return null;
                             },
@@ -232,7 +240,7 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'We\'ll send a payment request to this number',
+                              'Enter 9 digits after +255 (e.g., 712345678)',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
