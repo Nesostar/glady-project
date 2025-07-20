@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'payment_success_page.dart';
 import 'payment_service.dart';
 
-
 class PaymentConfirmationPage extends StatefulWidget {
   final double amount;
   final String method;
@@ -14,7 +13,8 @@ class PaymentConfirmationPage extends StatefulWidget {
   });
 
   @override
-  State<PaymentConfirmationPage> createState() => _PaymentConfirmationPageState();
+  State<PaymentConfirmationPage> createState() =>
+      _PaymentConfirmationPageState();
 }
 
 class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
@@ -43,29 +43,53 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
     });
 
     try {
-      final transactionId = await PaymentService.initiatePayment(
+      // Validate phone number format
+      if (!PaymentService.isValidTanzanianPhone(_phoneController.text)) {
+        setState(() => _error =
+            'Please enter a valid Tanzanian phone number (e.g., 0712345678)');
+        return;
+      }
+
+      // Format phone number
+      final formattedPhone =
+          PaymentService.formatPhoneNumber(_phoneController.text);
+
+      // Use the new ZenoPay API method
+      final result = await PaymentService.processMobileMoneyPayment(
+        orderId: PaymentService.generateOrderId(),
+        buyerEmail:
+            'customer@example.com', // You might want to get this from user profile
+        buyerName:
+            'Church Member', // You might want to get this from user profile
+        buyerPhone: formattedPhone,
         amount: widget.amount,
-        method: widget.method,
-        customerPhone: _phoneController.text,
       );
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentSuccessPage(
-            amount: widget.amount.toStringAsFixed(2),
-            method: widget.method,
-            transactionId: transactionId,
-            destinationAccount: 'NMB •••••36998',
+      if (result['success']) {
+        final transactionId = result['data']['transaction_id'] ??
+            result['data']['order_id'] ??
+            'Unknown';
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaymentSuccessPage(
+              amount: widget.amount.toStringAsFixed(2),
+              method: widget.method,
+              transactionId: transactionId,
+              destinationAccount: 'Mobile Money',
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        setState(() => _error = result['message'] ?? 'Payment failed');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _parseError(e.toString()));
-      
+
       // Auto-scroll to error message
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Scrollable.ensureVisible(
@@ -139,7 +163,8 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                                     ),
                                     title: Text(
                                       'Payment Method',
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
                                     ),
                                     subtitle: Text(
                                       widget.method.toUpperCase(),
@@ -163,7 +188,8 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                                     leading: Icon(Icons.account_balance),
                                     title: Text('Settlement Account'),
                                     subtitle: Text('NMB Bank •••••36998'),
-                                    trailing: Icon(Icons.verified, color: Colors.green),
+                                    trailing: Icon(Icons.verified,
+                                        color: Colors.green),
                                   ),
                                 ],
                               ),
@@ -207,9 +233,12 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               'We\'ll send a payment request to this number',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
                             ),
                           ),
 
@@ -225,7 +254,8 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.error_outline, color: Colors.red),
+                                  const Icon(Icons.error_outline,
+                                      color: Colors.red),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -246,7 +276,8 @@ class _PaymentConfirmationPageState extends State<PaymentConfirmationPage> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _processPayment,
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
                                 backgroundColor: Colors.green[700],
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
