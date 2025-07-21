@@ -10,7 +10,9 @@ class PaymentSuccessPage extends StatefulWidget {
   const PaymentSuccessPage({
     super.key,
     required this.amount,
-    required this.method, required String transactionId, required String destinationAccount,
+    required this.method,
+    required String transactionId,
+    required String destinationAccount,
   });
 
   @override
@@ -89,14 +91,6 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
                         );
                       },
                       child: const Text("View Receipt"),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("SMS Notification sent")),
-                        );
-                      },
-                      child: const Text("Send SMS Notification"),
                     ),
                     TextButton(
                       onPressed: () {

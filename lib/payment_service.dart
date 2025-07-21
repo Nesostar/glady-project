@@ -1,9 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config/api_config.dart';
 
 class PaymentService {
-  // ZenoPay Mobile Money Payment Request Model
+  // Save transaction data to Firestore
+  static Future<void> saveTransaction(Map<String, dynamic> transactionData) async {
+    try {
+      await FirebaseFirestore.instance.collection('transactions').add(transactionData);
+      print('✅ Transaction saved successfully.');
+    } catch (e) {
+      print('❌ Failed to save transaction: $e');
+    }
+  }
+
+  // Process mobile money payment
   static Future<Map<String, dynamic>> processMobileMoneyPayment({
     required String orderId,
     required String buyerEmail,
@@ -20,11 +31,9 @@ class PaymentService {
         'amount': amount.toInt(),
       };
 
-      // Debug logging
       print('🚀 Making POST request to: ${ApiConfig.zenoPayBaseUrl}');
       print('📦 Request body: ${jsonEncode(requestBody)}');
       print('📋 Headers: ${ApiConfig.headers}');
-      print('📱 Phone number being sent: $buyerPhone');
 
       final response = await http.post(
         Uri.parse(ApiConfig.zenoPayBaseUrl),
@@ -32,19 +41,31 @@ class PaymentService {
         body: jsonEncode(requestBody),
       );
 
-      // Debug response
       print('📡 Response status: ${response.statusCode}');
       print('📄 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
+
+        // Save transaction with initial status = pending
+        await saveTransaction({
+          'transaction_id': responseData['transaction_id'] ?? '',
+          'order_id': orderId,
+          'buyer_name': buyerName,
+          'buyer_email': buyerEmail,
+          'buyer_phone': buyerPhone,
+          'amount': amount,
+          'status': 'PENDING',
+          'timestamp': FieldValue.serverTimestamp(),
+          'response': responseData,
+        });
+
         return {
           'success': true,
           'data': responseData,
           'message': 'Payment request sent successfully',
         };
       } else {
-        print('❌ Payment failed with status: ${response.statusCode}');
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
@@ -62,86 +83,16 @@ class PaymentService {
     }
   }
 
-  // Generate unique order ID
-  static String generateOrderId() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'ORDER_${timestamp}_${(timestamp % 10000).toString().padLeft(4, '0')}';
-  }
-
-  // Validate phone number for Tanzania mobile money
-  static bool isValidTanzanianPhone(String phone) {
-    // Remove any spaces, dashes, and special characters except +
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-
-    // Check for valid Tanzanian mobile patterns
-    // +255 followed by 9 digits or 0 followed by 9 digits
-    final patterns = [
-      RegExp(r'^\+255[67]\d{8}$'), // +255 6xxxxxxxx or +255 7xxxxxxxx
-      RegExp(r'^0[67]\d{8}$'), // 06xxxxxxxx or 07xxxxxxxx
-      RegExp(r'^255[67]\d{8}$'), // 255 6xxxxxxxx or 255 7xxxxxxxx
-    ];
-
-    return patterns.any((pattern) => pattern.hasMatch(cleanPhone));
-  }
-
-  // Format phone number to required format
-  static String formatPhoneNumber(String phone) {
-    // Remove any spaces, dashes, and special characters except +
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-
-    // Convert to 255XXXXXXXXX format (what most APIs expect)
-    if (cleanPhone.startsWith('+255')) {
-      return cleanPhone.substring(1); // Remove +, keep 255XXXXXXXXX
-    } else if (cleanPhone.startsWith('255')) {
-      return cleanPhone; // Already in correct format: 255XXXXXXXXX
-    } else if (cleanPhone.startsWith('0')) {
-      return '255${cleanPhone.substring(1)}'; // Convert 0XXXXXXXXX to 255XXXXXXXXX
-    }
-
-    // If it's already in the right format (no prefix), assume it needs 255
-    if (cleanPhone.length == 9 && cleanPhone.startsWith(RegExp(r'[67]'))) {
-      return '255$cleanPhone';
-    }
-
-    return cleanPhone;
-  }
-
-  // Test different phone number formats
-  static void testPhoneFormats() {
-    final testNumbers = [
-      '0712345678',
-      '+255712345678',
-      '255712345678',
-      '712345678',
-      '0675177678',
-      '+255675177678',
-    ];
-
-    print('📱 Testing phone number formats:');
-    for (final number in testNumbers) {
-      final formatted = formatPhoneNumber(number);
-      final isValid = isValidTanzanianPhone(number);
-      print('Input: $number → Formatted: $formatted → Valid: $isValid');
-    }
-  }
-
-  // Test payment method to verify POST requests are working
-  static Future<Map<String, dynamic>> testPayment() async {
-    return await processMobileMoneyPayment(
-      orderId: generateOrderId(),
-      buyerEmail: 'test@example.com',
-      buyerName: 'Test User',
-      buyerPhone: '0675177678',
-      amount: 1000.0,
-    );
-  }
-
-  // Check payment status
-  static Future<Map<String, dynamic>> checkPaymentStatus(
-      String transactionId) async {
+  // Check payment status and update Firestore record
+  static Future<Map<String, dynamic>> checkPaymentStatus({
+    required String transactionId,
+    required String orderId,
+    required String buyerName,
+    required String buyerEmail,
+    required String buyerPhone,
+    required double amount,
+  }) async {
     try {
-      // Note: This is a placeholder - you'll need to implement the actual status endpoint
-      // For now, we'll simulate checking status
       final response = await http.get(
         Uri.parse('${ApiConfig.zenoPayBaseUrl}/status/$transactionId'),
         headers: ApiConfig.headers,
@@ -149,6 +100,20 @@ class PaymentService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
+
+        // Update transaction record with new status
+        await saveTransaction({
+          'transaction_id': responseData['transaction_id'] ?? transactionId,
+          'order_id': orderId,
+          'buyer_name': buyerName,
+          'buyer_email': buyerEmail,
+          'buyer_phone': buyerPhone,
+          'amount': amount,
+          'status': responseData['status'] ?? 'PENDING',
+          'timestamp': FieldValue.serverTimestamp(),
+          'response': responseData,
+        });
+
         return {
           'success': true,
           'status': responseData['status'] ?? 'PENDING',
@@ -163,7 +128,6 @@ class PaymentService {
       }
     } catch (e) {
       print('💥 Status check error: $e');
-      // For now, return PENDING to avoid breaking the flow
       return {
         'success': true,
         'status': 'PENDING',
@@ -172,7 +136,50 @@ class PaymentService {
     }
   }
 
-  // Legacy method for backward compatibility
+  // Generate unique order ID
+  static String generateOrderId() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return 'ORDER_${timestamp}_${(timestamp % 10000).toString().padLeft(4, '0')}';
+  }
+
+  // Validate Tanzanian phone number format
+  static bool isValidTanzanianPhone(String phone) {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final patterns = [
+      RegExp(r'^\+255[67]\d{8}$'),
+      RegExp(r'^0[67]\d{8}$'),
+      RegExp(r'^255[67]\d{8}$'),
+    ];
+    return patterns.any((pattern) => pattern.hasMatch(cleanPhone));
+  }
+
+  // Format phone number to 255XXXXXXXXX
+  static String formatPhoneNumber(String phone) {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    if (cleanPhone.startsWith('+255')) {
+      return cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('255')) {
+      return cleanPhone;
+    } else if (cleanPhone.startsWith('0')) {
+      return '255${cleanPhone.substring(1)}';
+    } else if (cleanPhone.length == 9 && cleanPhone.startsWith(RegExp(r'[67]'))) {
+      return '255$cleanPhone';
+    }
+    return cleanPhone;
+  }
+
+  // Test payment method
+  static Future<Map<String, dynamic>> testPayment() async {
+    return await processMobileMoneyPayment(
+      orderId: generateOrderId(),
+      buyerEmail: 'test@example.com',
+      buyerName: 'Test User',
+      buyerPhone: '0675177678',
+      amount: 1000.0,
+    );
+  }
+
+  // Legacy initiate payment (for backward compatibility)
   static Future<String> initiatePayment({
     required double amount,
     required String method,
@@ -182,8 +189,8 @@ class PaymentService {
 
     final result = await processMobileMoneyPayment(
       orderId: orderId,
-      buyerEmail: 'customer@example.com', // Default email
-      buyerName: 'Customer', // Default name
+      buyerEmail: 'customer@example.com',
+      buyerName: 'Customer',
       buyerPhone: customerPhone,
       amount: amount,
     );

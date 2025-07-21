@@ -11,15 +11,18 @@ class SermonsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Sermons')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('Sermons')  // your Firestore collection
-            .orderBy('timestamp', descending: true) // order by timestamp if available
+            .collection('Sermon')
+            .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
             return const Center(child: Text('No sermons available'));
           }
@@ -28,14 +31,12 @@ class SermonsPage extends StatelessWidget {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
-              final title = data['title'] ?? '[No title]';
-              final description = data['description'] ?? '';
-              final fileUrl = data['fileUrl']; // or 'audioUrl' depending on your schema
+              final content = data['content'] ?? '[No content]';
+              final fileUrl = data['fileUrl'];
 
               return Card(
                 child: ListTile(
-                  title: Text(title),
-                  subtitle: description.isNotEmpty ? Text(description) : null,
+                  title: Text(content),
                   trailing: fileUrl != null ? const Icon(Icons.play_circle_fill) : null,
                   onTap: fileUrl != null
                       ? () async {

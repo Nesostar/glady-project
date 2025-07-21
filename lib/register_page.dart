@@ -20,9 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String? membershipType;
 
   final List<String> churches = [
-    'Grace Community Church',
-    'Hope SDA Church',
-    'Victory SDA Church'
+    'Magomeni SDA Church'
   ];
 
   final List<String> membershipTypes = ['Member', 'Guest', 'Visitor'];

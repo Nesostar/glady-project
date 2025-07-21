@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import 'dark_theme_page.dart';
 import 'sermons_page.dart';
 import 'announcements_page.dart';
@@ -13,7 +14,7 @@ import 'settings_page.dart';
 import 'faq_page.dart';
 import 'transaction_history_page.dart';
 import 'rate_app_helper.dart';
-import 'notifications_page.dart'; // ✅ Ensure this exists and is imported
+import 'notifications_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -129,7 +130,8 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-       actions: [
+        title: const Text('Home', style: TextStyle(color: Colors.black)),
+        actions: [
   StreamBuilder<QuerySnapshot>(
     stream: FirebaseFirestore.instance
         .collection('notifications')
@@ -152,8 +154,8 @@ class _HomePageState extends State<HomePage> {
           ),
           if (unreadCount > 0)
             Positioned(
-              right: 12,
-              top: 12,
+              right: 10,
+              top: 10,
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
@@ -161,11 +163,11 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 constraints: const BoxConstraints(
-                  minWidth: 16,
-                  minHeight: 16,
+                  minWidth: 14,
+                  minHeight: 14,
                 ),
                 child: Text(
-                  '$unreadCount',
+                  unreadCount > 99 ? '99+' : '$unreadCount',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -180,7 +182,7 @@ class _HomePageState extends State<HomePage> {
     },
   ),
 ],
-),
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
